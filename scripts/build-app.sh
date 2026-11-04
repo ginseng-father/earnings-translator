@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds EarningsTranslator and assembles build/EarningsTranslator.app.
-# Ad-hoc signing changes the code signature on every rebuild, so macOS asks
-# for audio-capture permission again after each build.
+# Ad-hoc signed, with a designated requirement pinned to the bundle id so that
+# macOS keeps the speech/audio permissions across rebuilds (the default ad-hoc
+# requirement is the build's hash, which changes every time).
 set -euo pipefail
 
 CONFIG="${1:-debug}"
@@ -16,5 +17,6 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BIN" "$APP/Contents/MacOS/EarningsTranslator"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-codesign --force --sign - "$APP"
+codesign --force --sign - --identifier local.earningstranslator \
+    --requirements '=designated => identifier "local.earningstranslator"' "$APP"
 echo "Built $APP"
