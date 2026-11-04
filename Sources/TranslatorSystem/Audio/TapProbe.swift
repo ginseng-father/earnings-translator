@@ -43,7 +43,7 @@ public enum TapProbe {
         return peak > 0.01 ? 0 : 3
     }
 
-    static func peak(of buffer: AVAudioPCMBuffer) -> Float {
+    public static func peak(of buffer: AVAudioPCMBuffer) -> Float {
         guard let channels = buffer.floatChannelData else { return 0 }
         var peak: Float = 0
         let stride = buffer.stride

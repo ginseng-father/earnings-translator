@@ -59,4 +59,16 @@ struct EnglishQuantityExtractorTests {
     @Test func sentenceEndingPeriodIsNotDecimal() {
         #expect(extract("It grew 6 percent.") == [q("6", .percent)])
     }
+
+    @Test func ordinalsAreNotQuantities() {
+        // "for the 1st time" is usually rendered "처음으로", without a digit.
+        #expect(extract("Has arrived on Mac for the 1st time") == [])
+        #expect(extract("our 2nd and 3rd largest markets, 4th straight record") == [])
+        #expect(extract("the 21st consecutive quarter") == [])
+    }
+
+    @Test func numericOrdinalQuarters() {
+        #expect(extract("our 4th quarter results") == [q("4", .quarter)])
+        #expect(extract("in the 1st quarter") == [q("1", .quarter)])
+    }
 }

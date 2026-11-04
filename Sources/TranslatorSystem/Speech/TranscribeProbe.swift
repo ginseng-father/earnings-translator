@@ -1,6 +1,5 @@
 import AVFAudio
 import Foundation
-import Speech
 
 /// Transcribes an audio file through `LiveTranscriber` and prints each final
 /// result. Speech recognition only works inside an app bundle that declares
@@ -8,10 +7,7 @@ import Speech
 /// `--transcribe-file <path>` flag rather than from `swift test`.
 public enum TranscribeProbe {
     public static func run(file url: URL) async -> Int32 {
-        let status = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
-        }
-        print("speech authorization: \(status.rawValue)")
+        print("speech authorized: \(await SpeechAuthorization.request())")
 
         let transcriber = LiveTranscriber()
         do {

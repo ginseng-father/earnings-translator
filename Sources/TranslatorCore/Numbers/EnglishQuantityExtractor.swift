@@ -13,8 +13,10 @@ public enum EnglishQuantityExtractor {
         pattern: #"""
         \bQ(?<q>[1-4])\b
         |\b(?<ordinal>first|second|third|fourth)\s+quarter\b
+        |\b(?<qnum>[1-4])(?:st|nd|rd|th)\s+quarter\b
         |\b(?:FY|fiscal(?:\s+year)?)\s*'?(?<fy>\d{4}|\d{2})\b
         |\bfiscal(?:\s+year)?\s+twenty(?:[-\s](?<fyword>one|two|three|four|five|six|seven|eight|nine))?\b
+        |\b(?<ordinalnum>\d+(?:st|nd|rd|th))\b
         |\$?(?<num>\d[\d,]*(?:\.\d+)?)(?:\s*(?<unit>%|(?:trillion|billion|million|thousand|percentage\s+points?|percent|basis\s+points?|bps?)\b))?
         """#,
         options: [.caseInsensitive, .allowCommentsAndWhitespace]
@@ -29,7 +31,11 @@ public enum EnglishQuantityExtractor {
                 return String(text[swiftRange])
             }
 
-            if let quarter = group("q") {
+            // "1st", "21st": an ordinal, usually translated without a digit.
+            if group("ordinalnum") != nil {
+                return nil
+            }
+            if let quarter = group("q") ?? group("qnum") {
                 return Quantity(Decimal(string: quarter)!, .quarter)
             }
             if let ordinal = group("ordinal") {
@@ -40,6 +46,7 @@ public enum EnglishQuantityExtractor {
                 return Quantity(Decimal(year.count == 2 ? 2000 + value : value), .fiscalYear)
             }
             if match.range(withName: "fyword").location != NSNotFound || group("num") == nil {
+                // Only the "fiscal twenty[-x]" alternative reaches here.
                 let ones = group("fyword").map { units[$0.lowercased()]! } ?? 0
                 return Quantity(Decimal(2020 + ones), .fiscalYear)
             }
