@@ -64,6 +64,8 @@ public enum PromptBuilder {
         case .missingQuantity(let quantity): return "원문의 \(quantity) 값이 번역에 없습니다."
         case .extraQuantity(let quantity): return "원문에 없는 \(quantity) 값이 번역에 있습니다."
         case .missingTerm(let entry): return "'\(entry.english[0])'는 '\(entry.korean[0])'(으)로 번역하세요."
+        case .currencyMismatch(let expected, _):
+            return "통화를 바꾸지 마세요. 원문의 통화는 \(expected.joined(separator: ", "))입니다."
         case .emptyTranslation: return "번역이 비어 있었습니다."
         case .untranslatedEnglish: return "영어를 남기지 말고 한국어로 번역하세요."
         }

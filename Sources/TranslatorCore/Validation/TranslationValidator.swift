@@ -4,6 +4,8 @@ public enum ValidationIssue: Sendable, Hashable {
     case missingQuantity(Quantity)
     case extraQuantity(Quantity)
     case missingTerm(GlossaryEntry)
+    /// The translation names a currency the English amounts did not use.
+    case currencyMismatch(expected: [String], found: [String])
     case emptyTranslation
     case untranslatedEnglish
 }
@@ -16,6 +18,7 @@ public enum TranslationValidator {
         let target = KoreanQuantityExtractor.extract(korean)
         var issues = subtract(target, from: source).map(ValidationIssue.missingQuantity)
         issues += subtract(source, from: target).map(ValidationIssue.extraQuantity)
+        issues += currencyIssues(english: english, korean: korean)
         issues += glossary.entries(presentIn: english)
             .filter { !$0.isRendered(in: korean) }
             .map(ValidationIssue.missingTerm)
@@ -23,6 +26,15 @@ public enum TranslationValidator {
             issues.append(.untranslatedEnglish)
         }
         return issues
+    }
+
+    /// Flags "$94.9 billion" → "949억 원". Only judged when the English names a
+    /// currency; a translation that drops the unit is not flagged.
+    private static func currencyIssues(english: String, korean: String) -> [ValidationIssue] {
+        let expected = CurrencyExtractor.english(english)
+        let found = CurrencyExtractor.korean(korean)
+        guard !expected.isEmpty, !found.subtracting(expected).isEmpty else { return [] }
+        return [.currencyMismatch(expected: CurrencyExtractor.sorted(expected), found: CurrencyExtractor.sorted(found))]
     }
 
     /// Multiset difference `values − other`, keeping the order of `values`.

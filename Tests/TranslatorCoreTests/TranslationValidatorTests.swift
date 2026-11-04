@@ -42,6 +42,30 @@ struct TranslationValidatorTests {
         #expect(validate("EPS was $1.64.", "주당순이익(EPS)은 1.64달러였습니다.") == [])
     }
 
+    @Test func changedCurrencyIsReported() {
+        #expect(validate("Revenue was $94.9 billion.", "매출은 949억 원이었습니다.")
+            == [.currencyMismatch(expected: ["달러"], found: ["원"])])
+        #expect(validate("Revenue was $94.9 billion.", "매출은 949억 유로였습니다.")
+            == [.currencyMismatch(expected: ["달러"], found: ["유로"])])
+    }
+
+    @Test func sameCurrencyPasses() {
+        #expect(validate("Revenue was 94.9 billion dollars.", "매출은 949억 달러였습니다.") == [])
+        #expect(validate("Sales of €12 billion.", "120억 유로의 판매.") == [])
+        #expect(validate("We now expect fiscal 2026 capex of $1.2 trillion won.", "2026 회계연도 설비투자는 1조 2,000억 원으로 예상합니다.") == [])
+    }
+
+    @Test func currencyWordsWithoutNumbersAreIgnored() {
+        // "원" inside ordinary words (지원, 직원, 원활) is not a currency.
+        #expect(validate("We support our employees.", "직원들을 지원합니다.") == [])
+        #expect(validate("Revenue was $5 billion and support was smooth.", "매출은 50억 달러였고 지원은 원활했습니다.") == [])
+    }
+
+    @Test func missingCurrencyIsNotFlagged() {
+        #expect(validate("EPS was $1.64.", "주당순이익(EPS)은 1.64였습니다.") == [])
+        #expect(validate("Dividends were 3.9 billion.", "배당은 39억 달러였습니다.") == [])
+    }
+
     struct FixtureCase: Decodable {
         let en: String
         let ko: String
