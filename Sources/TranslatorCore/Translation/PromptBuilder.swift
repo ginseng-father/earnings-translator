@@ -41,7 +41,8 @@ public enum PromptBuilder {
         용어집:
         \(terms)
 
-        출력 형식: {"translations":[{"id":번호,"ko":"번역문"}]} — 입력의 모든 번호에 대해 하나씩 답하세요.
+        출력 형식: JSON 하나만 출력하세요. 코드 블록이나 다른 글은 붙이지 마세요.
+        {"translations":[{"id":번호,"ko":"번역문"}]} — 입력의 모든 번호에 대해 하나씩 답하세요.
         """
     }
 
@@ -56,23 +57,6 @@ public enum PromptBuilder {
             parts.append("주의 (이전 번역의 문제):\n" + hints.map { "- \(hint($0))" }.joined(separator: "\n"))
         }
         return parts.joined(separator: "\n\n")
-    }
-
-    public static var responseSchema: [String: Any] {
-        [
-            "type": "object",
-            "properties": [
-                "translations": [
-                    "type": "array",
-                    "items": [
-                        "type": "object",
-                        "properties": ["id": ["type": "integer"], "ko": ["type": "string"]],
-                        "required": ["id", "ko"],
-                    ],
-                ],
-            ],
-            "required": ["translations"],
-        ]
     }
 
     private static func hint(_ issue: ValidationIssue) -> String {

@@ -69,8 +69,8 @@ struct OllamaClientTests {
         #expect(body["keep_alive"] as? String == "2h")
         #expect(body["think"] as? Bool == false)
         #expect((body["options"] as? [String: Any])?["temperature"] as? Int == 0)
-        let format = try #require(body["format"] as? NSDictionary)
-        #expect(format == PromptBuilder.responseSchema as NSDictionary)
+        // gemma4 on Ollama 0.40 rejects any `format` with HTTP 501.
+        #expect(body["format"] == nil)
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages.map { $0["role"] } == ["system", "user"])
     }
@@ -79,6 +79,12 @@ struct OllamaClientTests {
         StubURLProtocol.handler = { _ in (200, self.chatReply(#"{"translations":[{"id":1,"ko":"매출이 성장했습니다."},{"id":2,"ko":"감사합니다."}]}"#)) }
         let result = try await client().translate(items, context: [], hints: [])
         #expect(result == [1: "매출이 성장했습니다.", 2: "감사합니다."])
+    }
+
+    @Test func decodesFencedJSONWithSurroundingText() async throws {
+        let content = "다음과 같습니다:\n```json\n{\"translations\":[{\"id\":1,\"ko\":\"매출이 성장했습니다.\"}]}\n```"
+        StubURLProtocol.handler = { _ in (200, self.chatReply(content)) }
+        #expect(try await client().translate(items, context: [], hints: []) == [1: "매출이 성장했습니다."])
     }
 
     @Test func nonJSONContentIsMalformed() async {

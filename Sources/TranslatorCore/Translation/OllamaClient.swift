@@ -43,7 +43,6 @@ public struct OllamaClient: TranslationBackend {
             "keep_alive": "2h",
             "think": false,
             "options": ["temperature": 0],
-            "format": PromptBuilder.responseSchema,
             "messages": [
                 ["role": "system", "content": PromptBuilder.systemPrompt(glossary: glossary)],
                 ["role": "user", "content": PromptBuilder.userMessage(items: items, context: context, hints: hints)],
@@ -64,7 +63,8 @@ public struct OllamaClient: TranslationBackend {
             let translations: [Item]
         }
         guard let chat = try? JSONDecoder().decode(ChatResponse.self, from: data),
-              let parsed = try? JSONDecoder().decode(Translations.self, from: Data(chat.message.content.utf8))
+              let json = Self.jsonObject(in: chat.message.content),
+              let parsed = try? JSONDecoder().decode(Translations.self, from: Data(json.utf8))
         else { throw BackendError.malformedResponse }
         return Dictionary(parsed.translations.map { ($0.id, $0.ko) }, uniquingKeysWith: { first, _ in first })
     }
@@ -80,6 +80,13 @@ public struct OllamaClient: TranslationBackend {
         let names = Set(tags.models.map(\.name))
         let installed = names.contains(model) || (!model.contains(":") && names.contains(model + ":latest"))
         return installed ? .ok : .modelMissing(model)
+    }
+
+    /// gemma4 on Ollama rejects `format`, so the JSON is asked for in the
+    /// prompt and may arrive wrapped in a code fence or a sentence.
+    static func jsonObject(in content: String) -> String? {
+        guard let open = content.firstIndex(of: "{"), let close = content.lastIndex(of: "}"), open < close else { return nil }
+        return String(content[open...close])
     }
 
     private func send(_ request: URLRequest) async throws -> Data {
