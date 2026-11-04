@@ -238,4 +238,27 @@ struct TranslationQueueTests {
         try await Task.sleep(for: .milliseconds(100))
         #expect(await backend.calls.count <= callsAtCancel + 1)
     }
+
+    @Test func httpErrorsReportFailingThenRecover() async throws {
+        let backend = FakeBackend { items, hints, call in
+            if call <= 2 { throw BackendError.http(500) }
+            return try await echo(items, hints, call)
+        }
+        let queue = makeQueue(backend)
+        let healthTask = Task {
+            var seen: [QueueHealth] = []
+            for await h in queue.health {
+                seen.append(h)
+                if seen.contains(.failing), h == .ok { break }
+            }
+            return seen
+        }
+        await queue.enqueue(segment("a 1"))
+        _ = try await terminalUpdates(queue, count: 1)
+        await queue.enqueue(segment("b 2"))
+        _ = try await terminalUpdates(queue, count: 1)
+        let health = await healthTask.value
+        #expect(health.contains(.failing))
+        #expect(health.last == .ok)
+    }
 }

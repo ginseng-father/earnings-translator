@@ -5,6 +5,7 @@ struct SegmentRow: View {
     static let flagHelp = "번역의 숫자나 용어가 영어 원문과 다를 수 있습니다. 영어 받아쓰기 자체의 오류는 검사하지 않습니다."
 
     let segment: Segment
+    let sessionActive: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -17,11 +18,10 @@ struct SegmentRow: View {
                         .font(.title3)
                         .help(Self.flagHelp)
                 }
-                if let korean = segment.korean {
-                    Text(korean).font(.title3)
-                } else {
-                    Text("번역 중…").font(.title3).foregroundStyle(.tertiary)
-                }
+                let shown = SegmentPresentation.koreanText(segment, sessionActive: sessionActive)
+                Text(shown.text)
+                    .font(.title3)
+                    .foregroundStyle(shown.isPlaceholder ? .tertiary : .primary)
             }
         }
         .textSelection(.enabled)

@@ -68,7 +68,7 @@ struct ContentView: View {
                 }
                 Divider()
             }
-            TranscriptView(segments: session.segments, liveEnglish: session.liveEnglish, scroll: scroll)
+            TranscriptView(segments: session.segments, liveEnglish: session.liveEnglish, sessionActive: session.isRunning, scroll: scroll)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {

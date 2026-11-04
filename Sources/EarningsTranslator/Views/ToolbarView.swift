@@ -17,7 +17,7 @@ struct ToolbarView: View {
             }
             .labelsHidden()
             .frame(maxWidth: 110)
-            .disabled(session.isRunning)
+            .disabled(session.isRunning || session.isBusy)
             .onTapGesture { session.refreshBrowsers() }
 
             Picker("모델", selection: $settings.modelTag) {
@@ -35,7 +35,7 @@ struct ToolbarView: View {
             .keyboardShortcut(.space, modifiers: [])
             .buttonStyle(.borderedProminent)
             .tint(session.isRunning ? .red : .accentColor)
-            .disabled(session.selectedBrowser == nil)
+            .disabled(session.selectedBrowser == nil || session.isBusy)
 
             Button("저장") {
                 Task { await session.saveNow() }

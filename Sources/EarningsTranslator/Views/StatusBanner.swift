@@ -29,6 +29,12 @@ struct StatusBanner: View {
             return "번역 모델이 없습니다. 터미널에서 `ollama pull \(model)`을 실행하세요."
         case .translationDelayed(let backlog):
             return "번역 지연 중 — \(backlog)문장 대기"
+        case .translationFailing:
+            return "번역 서버가 오류를 돌려주고 있습니다. Ollama와 모델 상태를 확인하세요(`ollama list`). 해당 문장에는 ⚠가 붙습니다."
+        case .audioStopped:
+            return "브라우저 소리가 끊겼습니다. 출력 장치(이어폰 등)가 바뀌었다면 정지 후 다시 시작하세요."
+        case .transcriptionStopped:
+            return "영어 받아쓰기가 멈췄습니다. 정지 후 다시 시작하세요."
         case .permissionDenied:
             return "브라우저 소리가 들리지 않습니다. 영상이 재생 중인지 확인하고, 시스템 설정 > 개인정보 보호 및 보안 > 화면 및 시스템 오디오 녹음에서 EarningsTranslator를 허용하세요."
         case .speechPermissionDenied:

@@ -18,6 +18,7 @@ final class TranscriptScrollState {
 struct TranscriptView: View {
     let segments: [Segment]
     let liveEnglish: String?
+    let sessionActive: Bool
     let scroll: TranscriptScrollState
 
     var body: some View {
@@ -25,7 +26,7 @@ struct TranscriptView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     ForEach(segments) { segment in
-                        SegmentRow(segment: segment)
+                        SegmentRow(segment: segment, sessionActive: sessionActive)
                         Divider()
                     }
                     if let liveEnglish {

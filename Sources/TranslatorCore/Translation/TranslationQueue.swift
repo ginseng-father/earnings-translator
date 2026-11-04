@@ -16,6 +16,8 @@ public enum QueueHealth: Sendable, Equatable {
     case ok
     case delayed(backlog: Int)
     case offline
+    /// The backend answers with errors (HTTP 4xx/5xx), e.g. the model was removed.
+    case failing
 }
 
 /// Translates segments in order, one request at a time. When sentences pile
@@ -33,6 +35,7 @@ public actor TranslationQueue {
     private var context: [ContextPair] = []
     private var isWorking = false
     private var isOffline = false
+    private var isFailing = false
     private var lastHealth: QueueHealth = .ok
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
     private var worker: Task<Void, Never>?
@@ -137,8 +140,9 @@ public actor TranslationQueue {
         while !Task.isCancelled {
             do {
                 let replies = try await backend.translate(items, context: context, hints: hints)
-                if isOffline {
+                if isOffline || isFailing {
                     isOffline = false
+                    isFailing = false
                     reportBacklog()
                 }
                 return replies
@@ -149,6 +153,10 @@ public actor TranslationQueue {
                     resumeIdleWaiters()
                 }
                 try? await Task.sleep(for: retryInterval)
+            } catch BackendError.http {
+                isFailing = true
+                setHealth(.failing)
+                return nil
             } catch {
                 return nil
             }
@@ -161,7 +169,7 @@ public actor TranslationQueue {
     }
 
     private func reportBacklog() {
-        guard !isOffline else { return }
+        guard !isOffline, !isFailing else { return }
         setHealth(pending.count >= delayedThreshold ? .delayed(backlog: pending.count) : .ok)
     }
 
