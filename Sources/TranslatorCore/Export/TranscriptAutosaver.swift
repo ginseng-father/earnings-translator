@@ -8,6 +8,7 @@ public actor TranscriptAutosaver {
     private let sessionStart: Date
     private let interval: Duration
     private var segments: [Segment] = []
+    private var pauses: [PauseMarker] = []
     private var dirty = false
     private var timer: Task<Void, Never>?
 
@@ -29,8 +30,9 @@ public actor TranscriptAutosaver {
         folder.appendingPathComponent(MarkdownExporter.fileName(for: sessionStart))
     }
 
-    public func update(_ segments: [Segment]) {
+    public func update(_ segments: [Segment], pauses: [PauseMarker] = []) {
         self.segments = segments
+        self.pauses = pauses
         dirty = true
         if timer == nil {
             timer = Task { [interval] in
@@ -49,7 +51,7 @@ public actor TranscriptAutosaver {
 
     public func flush() throws {
         guard dirty else { return }
-        let text = MarkdownExporter.render(segments: segments, sessionStart: sessionStart)
+        let text = MarkdownExporter.render(segments: segments, pauses: pauses, sessionStart: sessionStart)
         try Data(text.utf8).write(to: fileURL, options: .atomic)
         dirty = false
     }

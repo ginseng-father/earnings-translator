@@ -42,3 +42,24 @@ struct LiveRow: View {
             .background(Color.yellow.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
     }
 }
+
+/// Where 정지 was pressed; the transcript continues below it.
+struct PauseRow: View {
+    let marker: PauseMarker
+
+    var body: some View {
+        HStack(spacing: 8) {
+            line
+            Text(marker.label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize()
+            line
+        }
+        .padding(.vertical, 10)
+    }
+
+    private var line: some View {
+        Rectangle().fill(.separator).frame(height: 1)
+    }
+}

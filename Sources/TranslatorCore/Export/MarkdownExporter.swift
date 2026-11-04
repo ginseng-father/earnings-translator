@@ -1,11 +1,17 @@
 import Foundation
 
 public enum MarkdownExporter {
-    public static func render(segments: [Segment], sessionStart: Date) -> String {
+    public static func render(segments: [Segment], pauses: [PauseMarker] = [], sessionStart: Date) -> String {
         var lines = ["# 실적 발표 번역 — \(format(sessionStart, "yyyy-MM-dd HH:mm"))", ""]
-        for segment in segments {
-            lines.append("**[\(timestamp(segment.start))]** \(segment.english)")
-            lines.append("> \(translationLine(segment))")
+        for entry in TranscriptEntry.interleave(segments: segments, pauses: pauses) {
+            switch entry {
+            case .segment(let segment):
+                lines.append("**[\(timestamp(segment.start))]** \(segment.english)")
+                lines.append("> \(translationLine(segment))")
+            case .pause(let marker):
+                lines.append("---")
+                lines.append("_\(marker.label)_")
+            }
             lines.append("")
         }
         return lines.joined(separator: "\n")

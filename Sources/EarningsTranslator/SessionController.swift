@@ -27,6 +27,7 @@ private struct Session {
     let transcriber: LiveTranscriber
     let queue: TranslationQueue
     let autosaver: TranscriptAutosaver
+    /// When the transcript (not this session) began; names the file.
     let start: Date
     var folder: URL
     var eventsTask: Task<Void, Never>?
@@ -38,6 +39,8 @@ private struct Session {
 @MainActor @Observable
 final class SessionController {
     var segments: [Segment] = []
+    /// Where 정지 was pressed in a transcript that kept going afterwards.
+    var pauses: [PauseMarker] = []
     var liveEnglish: String?
     var browsers: [Browser] = []
     var selectedBrowser: Browser?
@@ -50,6 +53,11 @@ final class SessionController {
     var isBusy: Bool { gate.phase == .starting || gate.phase == .stopping }
 
     private var session: Session?
+    /// The transcript survives stop/start until 정리; these describe its file.
+    private var transcriptStart: Date?
+    private var transcriptFolder: URL?
+    /// 정리 is allowed only while idle and when there is something to clear.
+    var canClear: Bool { gate.phase == .idle && (!segments.isEmpty || !pauses.isEmpty) }
     private var indexByID: [UUID: Int] = [:]
     private var heardAudio = false
     private var stall = StallDetector(timeout: 10)
@@ -83,7 +91,7 @@ final class SessionController {
     }
 
     private func startSession(browser: Browser) async -> Bool {
-        guard let folder = settings.saveFolder ?? chooseFolder() else { return false }
+        guard let folder = transcriptFolder ?? settings.saveFolder ?? chooseFolder() else { return false }
         banner = nil
 
         guard await SpeechAuthorization.request() else {
@@ -122,19 +130,32 @@ final class SessionController {
             return false
         }
 
-        let start = Date()
+        let now = Date()
+        if transcriptStart != nil {
+            // Continuing after 정지: close the open pause marker.
+            if let last = pauses.indices.last, pauses[last].resumedAt == nil {
+                pauses[last].resumedAt = now
+            }
+        } else {
+            segments = []
+            pauses = []
+            indexByID = [:]
+            transcriptStart = now
+            transcriptFolder = folder
+        }
+        let start = transcriptStart ?? now
+        // Audio times restart at 0 each session; shift them onto the transcript clock.
+        let offset = now.timeIntervalSince(start)
         let queue = TranslationQueue(backend: backend, glossary: glossary)
         let autosaver = TranscriptAutosaver(folder: folder, sessionStart: start)
         var session = Session(capture: capture, transcriber: transcriber, queue: queue, autosaver: autosaver, start: start, folder: folder)
-        segments = []
-        indexByID = [:]
         liveEnglish = nil
         heardAudio = false
-        stall = StallDetector(timeout: 10, startedAt: start)
+        stall = StallDetector(timeout: 10, startedAt: now)
 
         let events = transcriber.start(audio: meter(audio), naturalFormat: capture.naturalFormat)
         session.eventsTask = Task { [weak self] in
-            for await event in events { await self?.handle(event, queue: queue, autosaver: autosaver) }
+            for await event in events { await self?.handle(event, offset: offset, queue: queue, autosaver: autosaver) }
             // The stream only ends on its own if recognition failed mid-session.
             if let self, self.isRunning, self.session?.queue === queue { self.banner = .transcriptionStopped }
         }
@@ -180,7 +201,8 @@ final class SessionController {
         await session.updatesTask?.value
         session.tasks.forEach { $0.cancel() }
         liveEnglish = nil
-        await session.autosaver.update(segments)
+        pauses.append(PauseMarker(pausedAt: Date(), afterSegment: segments.count))
+        await session.autosaver.update(segments, pauses: pauses)
         do {
             try await session.autosaver.close()
         } catch {
@@ -190,9 +212,21 @@ final class SessionController {
         gate.finishStop()
     }
 
+    /// Empties the transcript; the next 시작 begins a new file.
+    func clear() {
+        guard canClear else { return }
+        segments = []
+        pauses = []
+        indexByID = [:]
+        liveEnglish = nil
+        transcriptStart = nil
+        transcriptFolder = nil
+        banner = nil
+    }
+
     func saveNow() async {
         guard let autosaver = session?.autosaver else { return }
-        await autosaver.update(segments)
+        await autosaver.update(segments, pauses: pauses)
         do {
             try await autosaver.flush()
             if case .saveFailed = banner { banner = nil }
@@ -205,6 +239,7 @@ final class SessionController {
     func chooseNewSaveFolder() async {
         guard session != nil, let folder = chooseFolder() else { return }
         session?.folder = folder
+        transcriptFolder = folder
         await session?.autosaver.setFolder(folder)
         await saveNow()
     }
@@ -212,21 +247,21 @@ final class SessionController {
     /// Synchronous last-chance save when the app quits mid-session.
     func saveOnQuit() {
         guard let session else { return }
-        let text = MarkdownExporter.render(segments: segments, sessionStart: session.start)
+        let text = MarkdownExporter.render(segments: segments, pauses: pauses, sessionStart: session.start)
         let url = session.folder.appendingPathComponent(MarkdownExporter.fileName(for: session.start))
         try? Data(text.utf8).write(to: url, options: .atomic)
     }
 
     // MARK: Event handling
 
-    private func handle(_ event: TranscriptEvent, queue: TranslationQueue, autosaver: TranscriptAutosaver) async {
+    private func handle(_ event: TranscriptEvent, offset: TimeInterval, queue: TranslationQueue, autosaver: TranscriptAutosaver) async {
         switch event {
         case .volatile(let text):
             liveEnglish = text.isEmpty ? nil : text
         case .final(let text, let start):
             liveEnglish = nil
             for chunk in SentenceSplitter.split(text) {
-                let segment = Segment(start: start, english: chunk)
+                let segment = Segment(start: offset + start, english: chunk)
                 indexByID[segment.id] = segments.count
                 segments.append(segment)
                 // Awaited in the events loop, so sentences reach the queue in order
@@ -261,8 +296,8 @@ final class SessionController {
     }
 
     private func save(to autosaver: TranscriptAutosaver) {
-        let snapshot = segments
-        Task { await autosaver.update(snapshot) }
+        let snapshot = segments, pauses = self.pauses
+        Task { await autosaver.update(snapshot, pauses: pauses) }
     }
 
     private func browserTerminated(_ bundleID: String?) {

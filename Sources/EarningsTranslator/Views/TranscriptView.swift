@@ -17,6 +17,7 @@ final class TranscriptScrollState {
 /// up, then offers a button back to the latest line.
 struct TranscriptView: View {
     let segments: [Segment]
+    let pauses: [PauseMarker]
     let liveEnglish: String?
     let sessionActive: Bool
     let scroll: TranscriptScrollState
@@ -25,9 +26,14 @@ struct TranscriptView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(segments) { segment in
-                        SegmentRow(segment: segment, sessionActive: sessionActive)
-                        Divider()
+                    ForEach(TranscriptEntry.interleave(segments: segments, pauses: pauses)) { entry in
+                        switch entry {
+                        case .segment(let segment):
+                            SegmentRow(segment: segment, sessionActive: sessionActive)
+                            Divider()
+                        case .pause(let marker):
+                            PauseRow(marker: marker)
+                        }
                     }
                     if let liveEnglish {
                         LiveRow(english: liveEnglish)
@@ -50,6 +56,9 @@ struct TranscriptView: View {
             .onChange(of: segments) {
                 if scroll.followsLatest { proxy.scrollTo("bottom", anchor: .bottom) }
             }
+            .onChange(of: pauses) {
+                if scroll.followsLatest { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
             .onChange(of: liveEnglish) {
                 if scroll.followsLatest { proxy.scrollTo("bottom", anchor: .bottom) }
             }
@@ -64,7 +73,7 @@ struct TranscriptView: View {
                 }
             }
             .overlay {
-                if segments.isEmpty && liveEnglish == nil {
+                if segments.isEmpty && pauses.isEmpty && liveEnglish == nil {
                     Text("브라우저를 고르고 시작을 누르세요.")
                         .foregroundStyle(.secondary)
                 }
