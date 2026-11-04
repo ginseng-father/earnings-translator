@@ -146,8 +146,11 @@ final class SessionController {
         await transcriber?.stop()
         await eventsTask?.value
         await queue?.finish()
+        // finish() returns early while Ollama is offline; stop retrying for good.
+        // Untranslated lines are saved as "(번역 대기 중)".
         // Let the update stream deliver the last results before the final save.
         try? await Task.sleep(for: .milliseconds(200))
+        await queue?.cancel()
         tasks.forEach { $0.cancel() }
         tasks = []
         liveEnglish = nil

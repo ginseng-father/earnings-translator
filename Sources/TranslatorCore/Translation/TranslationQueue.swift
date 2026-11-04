@@ -35,6 +35,8 @@ public actor TranslationQueue {
     private var isOffline = false
     private var lastHealth: QueueHealth = .ok
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
+    private var worker: Task<Void, Never>?
+    private var isCancelled = false
 
     public nonisolated let updates: AsyncStream<SegmentUpdate>
     public nonisolated let health: AsyncStream<QueueHealth>
@@ -60,11 +62,12 @@ public actor TranslationQueue {
     }
 
     public func enqueue(_ segment: Segment) {
+        guard !isCancelled else { return }
         pending.append(segment)
         reportBacklog()
         guard !isWorking else { return }
         isWorking = true
-        Task { await self.drain() }
+        worker = Task { await self.drain() }
     }
 
     /// Returns once everything queued so far is translated, or the backend is offline.
@@ -73,13 +76,25 @@ public actor TranslationQueue {
         await withCheckedContinuation { idleWaiters.append($0) }
     }
 
+    /// Stops work for good: untranslated segments stay as they are, and an
+    /// offline backend is no longer retried. Ends both streams.
+    public func cancel() {
+        isCancelled = true
+        worker?.cancel()
+        pending.removeAll()
+        updateSink.finish()
+        healthSink.finish()
+        resumeIdleWaiters()
+    }
+
     private func drain() async {
-        while !pending.isEmpty {
+        while !pending.isEmpty, !isCancelled {
             let batch = Array(pending.prefix(maxBatch))
             for segment in batch {
                 updateSink.yield(SegmentUpdate(id: segment.id, korean: nil, status: .translating))
             }
             let results = await translate(batch)
+            guard !isCancelled else { break }
             pending.removeFirst(batch.count)
             for (segment, update) in zip(batch, results) {
                 updateSink.yield(update)
@@ -119,7 +134,7 @@ public actor TranslationQueue {
 
     /// Waits out an unreachable backend; any other failure yields `nil`.
     private func request(_ items: [TranslationItem], hints: [ValidationIssue]) async -> [Int: String]? {
-        while true {
+        while !Task.isCancelled {
             do {
                 let replies = try await backend.translate(items, context: context, hints: hints)
                 if isOffline {
@@ -138,6 +153,7 @@ public actor TranslationQueue {
                 return nil
             }
         }
+        return nil
     }
 
     private func validate(_ segment: Segment, _ korean: String) -> [ValidationIssue] {

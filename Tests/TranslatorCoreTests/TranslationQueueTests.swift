@@ -227,4 +227,15 @@ struct TranslationQueueTests {
         await queue.finish()
         #expect(await backend.calls.count == 2)
     }
+
+    @Test func cancelStopsOfflineRetries() async throws {
+        let backend = FakeBackend { _, _, _ in throw BackendError.unreachable }
+        let queue = makeQueue(backend)
+        await queue.enqueue(segment("a 1"))
+        try await Task.sleep(for: .milliseconds(50))
+        await queue.cancel()
+        let callsAtCancel = await backend.calls.count
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(await backend.calls.count <= callsAtCancel + 1)
+    }
 }
