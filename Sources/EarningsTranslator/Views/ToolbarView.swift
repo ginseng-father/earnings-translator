@@ -46,7 +46,7 @@ struct ToolbarView: View {
                 Image(systemName: settings.pinOnTop ? "pin.fill" : "pin")
             }
             .toggleStyle(.button)
-            .help("다른 창 위에 항상 표시")
+            .help("켜면 모든 데스크톱과 전체 화면 영상 위에 항상 표시합니다. 끄면 일반 창처럼 원하는 데스크톱으로 옮길 수 있습니다.")
         }
         .padding(10)
     }

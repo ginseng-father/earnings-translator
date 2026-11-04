@@ -107,9 +107,18 @@ struct ContentView: View {
         }
     }
 
+    /// Pinned: floats above other windows, follows every desktop, and shows
+    /// over a full-screen browser. Unpinned: an ordinary window that Mission
+    /// Control can move to a single desktop.
     private func applyPin() {
-        for window in NSApplication.shared.windows {
-            window.level = settings.pinOnTop ? .floating : .normal
+        for window in NSApplication.shared.windows where window.canBecomeMain {
+            if settings.pinOnTop {
+                window.level = .floating
+                window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            } else {
+                window.level = .normal
+                window.collectionBehavior = [.managed, .participatesInCycle]
+            }
         }
     }
 }

@@ -14,9 +14,10 @@ BIN="$(swift build -c "$CONFIG" --show-bin-path)/EarningsTranslator"
 
 APP="build/EarningsTranslator.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/EarningsTranslator"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"  # regenerate: swift scripts/make-icon.swift
 codesign --force --sign - --identifier local.earningstranslator \
     --requirements '=designated => identifier "local.earningstranslator"' "$APP"
 echo "Built $APP"
