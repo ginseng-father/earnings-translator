@@ -68,6 +68,10 @@ struct ContentView: View {
                 }
                 Divider()
             }
+            if let notice = session.saveNotice {
+                SaveNoticeView(notice: notice)
+                Divider()
+            }
             TranscriptView(segments: session.segments, pauses: session.pauses, liveEnglish: session.liveEnglish, sessionActive: session.isRunning, scroll: scroll)
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -93,7 +97,7 @@ struct ContentView: View {
         let environment = ProcessInfo.processInfo.environment
         guard let seconds = environment["ET_AUTOSTART_SECONDS"].flatMap(Double.init),
               let folder = environment["ET_AUTOSTART_FOLDER"] else { return }
-        settings.saveFolder = URL(fileURLWithPath: folder, isDirectory: true)
+        session.folderOverride = URL(fileURLWithPath: folder, isDirectory: true)
         // ET_AUTOSTART_CYCLES > 1 stops, waits ET_AUTOSTART_GAP seconds and starts
         // again, to exercise pause/resume.
         let cycles = environment["ET_AUTOSTART_CYCLES"].flatMap(Int.init) ?? 1

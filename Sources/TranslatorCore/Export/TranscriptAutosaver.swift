@@ -51,8 +51,7 @@ public actor TranscriptAutosaver {
 
     public func flush() throws {
         guard dirty else { return }
-        let text = MarkdownExporter.render(segments: segments, pauses: pauses, sessionStart: sessionStart)
-        try Data(text.utf8).write(to: fileURL, options: .atomic)
+        try MarkdownExporter.write(segments: segments, pauses: pauses, sessionStart: sessionStart, to: folder)
         dirty = false
     }
 

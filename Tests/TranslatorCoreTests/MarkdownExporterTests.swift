@@ -37,7 +37,21 @@ struct MarkdownExporterTests {
         #expect(MarkdownExporter.render(segments: [segment], sessionStart: sessionStart()).contains("**[01:02:05]** Next question.\n> (번역 대기 중)"))
     }
 
-    @Test func fileNameUsesSessionStart() {
-        #expect(MarkdownExporter.fileName(for: sessionStart()) == "2026-11-04_1830.md")
+    @Test func fileNameUsesSessionStartToTheMillisecond() {
+        let start = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 4, hour: 18, minute: 30, second: 15, nanosecond: 123_000_000))!
+        #expect(MarkdownExporter.fileName(for: start) == "2026-11-04_183015-123.md")
+    }
+
+    @Test func writeSavesRenderedTranscriptAndReturnsItsURL() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        let url = try MarkdownExporter.write(segments: sampleSegments(), sessionStart: sessionStart(), to: folder)
+        let again = try MarkdownExporter.write(segments: sampleSegments(), sessionStart: sessionStart(), to: folder)
+
+        #expect(url == folder.appendingPathComponent("2026-11-04_183000-000.md"))
+        #expect(again == url)
+        #expect(try String(contentsOf: url, encoding: .utf8) == MarkdownExporter.render(segments: sampleSegments(), sessionStart: sessionStart()))
     }
 }

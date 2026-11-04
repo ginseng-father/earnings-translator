@@ -20,6 +20,12 @@ enum Banner: Equatable {
     case browserQuit
 }
 
+/// Shown briefly under the toolbar after a save.
+struct SaveNotice: Equatable {
+    let url: URL
+    let date: Date
+}
+
 /// Everything one session owns, so `stop()` tears down exactly that session
 /// even if another one is started right after.
 private struct Session {
@@ -45,6 +51,9 @@ final class SessionController {
     var browsers: [Browser] = []
     var selectedBrowser: Browser?
     var banner: Banner?
+    var saveNotice: SaveNotice?
+    /// Used instead of the saved folder without remembering it (autostart checks).
+    var folderOverride: URL?
     let settings: Settings
 
     private var gate = SessionGate()
@@ -62,6 +71,7 @@ final class SessionController {
     private var heardAudio = false
     private var stall = StallDetector(timeout: 10)
     private var quitObserver: NSObjectProtocol?
+    private var noticeTask: Task<Void, Never>?
 
     init(settings: Settings) {
         self.settings = settings
@@ -91,7 +101,7 @@ final class SessionController {
     }
 
     private func startSession(browser: Browser) async -> Bool {
-        guard let folder = transcriptFolder ?? settings.saveFolder ?? chooseFolder() else { return false }
+        guard let folder = transcriptFolder ?? folderOverride ?? settings.saveFolder ?? chooseFolder() else { return false }
         banner = nil
 
         guard await SpeechAuthorization.request() else {
@@ -205,6 +215,7 @@ final class SessionController {
         await session.autosaver.update(segments, pauses: pauses)
         do {
             try await session.autosaver.close()
+            noteSaved(await session.autosaver.fileURL)
         } catch {
             banner = .saveFailed(error.localizedDescription)
         }
@@ -224,12 +235,21 @@ final class SessionController {
         banner = nil
     }
 
+    /// Writes the transcript now, every time it is pressed, running or stopped.
     func saveNow() async {
-        guard let autosaver = session?.autosaver else { return }
-        await autosaver.update(segments, pauses: pauses)
         do {
-            try await autosaver.flush()
+            let url: URL
+            if let autosaver = session?.autosaver {
+                await autosaver.update(segments, pauses: pauses)
+                try await autosaver.flush()
+                url = await autosaver.fileURL
+            } else if let start = transcriptStart, let folder = transcriptFolder {
+                url = try MarkdownExporter.write(segments: segments, pauses: pauses, sessionStart: start, to: folder)
+            } else {
+                return
+            }
             if case .saveFailed = banner { banner = nil }
+            noteSaved(url)
         } catch {
             banner = .saveFailed(error.localizedDescription)
         }
@@ -237,7 +257,7 @@ final class SessionController {
 
     /// Lets the user pick a new folder after a failed save, then saves there.
     func chooseNewSaveFolder() async {
-        guard session != nil, let folder = chooseFolder() else { return }
+        guard transcriptStart != nil, let folder = chooseFolder() else { return }
         session?.folder = folder
         transcriptFolder = folder
         await session?.autosaver.setFolder(folder)
@@ -247,9 +267,17 @@ final class SessionController {
     /// Synchronous last-chance save when the app quits mid-session.
     func saveOnQuit() {
         guard let session else { return }
-        let text = MarkdownExporter.render(segments: segments, pauses: pauses, sessionStart: session.start)
-        let url = session.folder.appendingPathComponent(MarkdownExporter.fileName(for: session.start))
-        try? Data(text.utf8).write(to: url, options: .atomic)
+        _ = try? MarkdownExporter.write(segments: segments, pauses: pauses, sessionStart: session.start, to: session.folder)
+    }
+
+    private func noteSaved(_ url: URL) {
+        saveNotice = SaveNotice(url: url, date: Date())
+        noticeTask?.cancel()
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.saveNotice = nil
+        }
     }
 
     // MARK: Event handling

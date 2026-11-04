@@ -57,7 +57,7 @@ struct ToolbarView: View {
                 } label: {
                     Label("저장", systemImage: "square.and.arrow.down")
                 }
-                .help("지금 저장")
+                .help("누를 때마다 지금까지의 대본을 저장합니다. 정지 중에도 됩니다.")
                 .disabled(session.segments.isEmpty)
 
                 Button {
