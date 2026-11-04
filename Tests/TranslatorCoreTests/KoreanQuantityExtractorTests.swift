@@ -50,4 +50,11 @@ struct KoreanQuantityExtractorTests {
     @Test func wrongScaleIsVisible() {
         #expect(extract("94억 9천만 달러") == [q("9490000000")])
     }
+
+    @Test func monthNamesAreNotQuantities() {
+        // English says "September", so a Korean "9월" must not count as an added number.
+        #expect(extract("9월 분기 사상 최고치") == [])
+        #expect(extract("9월 30일 기준") == [q("30")])
+        #expect(extract("12개월 동안") == [q("12")])
+    }
 }

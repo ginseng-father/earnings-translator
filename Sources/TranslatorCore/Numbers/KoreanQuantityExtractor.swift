@@ -7,7 +7,7 @@ public enum KoreanQuantityExtractor {
         pattern: #"(?<num>\d[\d,]*(?:\.\d+)?)(?<thousand>천)?(?<big>조|억|만)?"#
     )
     private static let suffix = try! NSRegularExpression(
-        pattern: #"^\s*(?:(?<pp>%\s*p|%\s*포인트)|(?<pct>%)|(?<bp>bps?|베이시스\s*포인트)|(?<quarter>분기)|(?<fy>회계\s*연도))"#,
+        pattern: #"^\s*(?:(?<pp>%\s*p|%\s*포인트)|(?<pct>%)|(?<bp>bps?|베이시스\s*포인트)|(?<quarter>분기)|(?<fy>회계\s*연도)|(?<month>월))"#,
         options: [.caseInsensitive]
     )
     private static let bigScale: [String: Decimal] = ["조": 1_000_000_000_000, "억": 100_000_000, "만": 10_000]
@@ -46,13 +46,16 @@ public enum KoreanQuantityExtractor {
                 end = chunks[index].range.upperBound
                 lastScale = next
             }
-            quantities.append(Quantity(total, unit(after: end, in: text)))
+            if let unit = unit(after: end, in: text) {
+                quantities.append(Quantity(total, unit))
+            }
             index += 1
         }
         return quantities
     }
 
-    private static func unit(after end: String.Index, in text: String) -> QuantityUnit {
+    /// `nil` for month names ("9월"): English says "September", not a number.
+    private static func unit(after end: String.Index, in text: String) -> QuantityUnit? {
         let rest = String(text[end...])
         guard let match = suffix.firstMatch(in: rest, range: NSRange(rest.startIndex..., in: rest)) else { return .plain }
         func has(_ name: String) -> Bool { match.range(withName: name).location != NSNotFound }
@@ -61,6 +64,7 @@ public enum KoreanQuantityExtractor {
         if has("bp") { return .basisPoints }
         if has("quarter") { return .quarter }
         if has("fy") { return .fiscalYear }
+        if has("month") { return nil }
         return .plain
     }
 }
