@@ -1,0 +1,22 @@
+[
+  {"en": "Revenue was $94.9 billion, up 6% year over year.", "ko": "매출은 949억 달러로 전년 대비 6% 증가했습니다.", "expectedIssueCount": 0},
+  {"en": "Revenue was $94.9 billion, up 6% year over year.", "ko": "매출은 94억 9천만 달러로 전년 대비 6% 증가했습니다.", "expectedIssueCount": 2},
+  {"en": "Diluted EPS was $1.64, a September quarter record.", "ko": "희석 주당순이익(EPS)은 1.64달러로 9월 분기 사상 최고치였습니다.", "expectedIssueCount": 0},
+  {"en": "Operating margin expanded 120 basis points to 31.5%.", "ko": "영업이익률은 120bp 개선된 31.5%를 기록했습니다.", "expectedIssueCount": 0},
+  {"en": "Operating margin expanded 120 basis points to 31.5%.", "ko": "영업이익률은 1.2% 개선된 31.5%를 기록했습니다.", "expectedIssueCount": 2},
+  {"en": "Gross margin was up 2.5 percentage points sequentially.", "ko": "매출총이익률은 전 분기 대비 2.5%p 상승했습니다.", "expectedIssueCount": 0},
+  {"en": "For the fourth quarter, we expect revenue to grow mid-single digits.", "ko": "4분기 매출은 한 자릿수 중반 성장할 것으로 예상합니다.", "expectedIssueCount": 0},
+  {"en": "For the fourth quarter, we expect revenue to grow mid-single digits.", "ko": "3분기 매출은 한 자릿수 중반 성장할 것으로 예상합니다.", "expectedIssueCount": 2},
+  {"en": "We now expect fiscal 2026 capex of $1.2 trillion won.", "ko": "2026 회계연도 설비투자는 1조 2,000억 원으로 예상합니다.", "expectedIssueCount": 0},
+  {"en": "Q3 free cash flow was $26.8 billion.", "ko": "3분기 잉여현금흐름은 268억 달러였습니다.", "expectedIssueCount": 0},
+  {"en": "We returned over $29 billion to shareholders, including $24 billion in share repurchases.", "ko": "주주들에게 290억 달러 이상을 환원했으며, 이 중 240억 달러는 자사주 매입이었습니다.", "expectedIssueCount": 0},
+  {"en": "The board declared a dividend of $0.26 per share.", "ko": "이사회는 주당 0.26달러의 배당을 결의했습니다.", "expectedIssueCount": 0},
+  {"en": "We expect EPS between $1.60 and $1.65.", "ko": "주당순이익(EPS)은 1.60~1.65달러로 예상합니다.", "expectedIssueCount": 0},
+  {"en": "We expect EPS between $1.60 and $1.65.", "ko": "주당순이익(EPS)은 1.65달러로 예상합니다.", "expectedIssueCount": 1},
+  {"en": "Net income was $14.7 billion, which beat consensus.", "ko": "순이익은 147억 달러로 컨센서스를 상회했습니다.", "expectedIssueCount": 0},
+  {"en": "Net income was $14.7 billion, which beat consensus.", "ko": "순이익은 147억 달러였습니다.", "expectedIssueCount": 2},
+  {"en": "Currency was a headwind of about 2%.", "ko": "환율은 약 2%의 역풍으로 작용했습니다.", "expectedIssueCount": 0},
+  {"en": "Data center revenue grew 112% to $30.8 billion in the first quarter.", "ko": "1분기 데이터센터 매출은 112% 증가한 308억 달러였습니다.", "expectedIssueCount": 0},
+  {"en": "We delivered double digits growth in 2025.", "ko": "2025년에 두 자릿수 성장을 달성했습니다.", "expectedIssueCount": 0},
+  {"en": "Thank you, operator.", "ko": "", "expectedIssueCount": 1}
+]
