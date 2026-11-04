@@ -15,7 +15,7 @@ struct TranscriptAutosaverTests {
         await saver.update(sampleSegments())
         try await saver.flush()
         let url = await saver.fileURL
-        #expect(url.lastPathComponent == "2026-11-04_1830.md")
+        #expect(url.lastPathComponent == "2026-11-04_183000-000.md")
         #expect(try String(contentsOf: url, encoding: .utf8) == MarkdownExporter.render(segments: sampleSegments(), sessionStart: sessionStart()))
     }
 

@@ -68,7 +68,11 @@ struct ContentView: View {
                 }
                 Divider()
             }
-            TranscriptView(segments: session.segments, liveEnglish: session.liveEnglish, sessionActive: session.isRunning, scroll: scroll)
+            if let notice = session.saveNotice {
+                SaveNoticeView(notice: notice)
+                Divider()
+            }
+            TranscriptView(segments: session.segments, pauses: session.pauses, liveEnglish: session.liveEnglish, sessionActive: session.isRunning, scroll: scroll)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
@@ -85,24 +89,30 @@ struct ContentView: View {
     }
 
     /// Hidden end-to-end check driven by environment variables
-    /// (`open --env ET_AUTOSTART_SECONDS=… --env ET_AUTOSTART_FOLDER=…`): starts a
-    /// session on the default browser, stops after the given seconds, and quits.
+    /// (`open --env ET_AUTOSTART_SECONDS=… --env ET_AUTOSTART_FOLDER=…`): runs
+    /// session(s) on the default browser for the given seconds each, then quits.
     /// Not launch arguments: AppKit treats a path argument as a document to open
     /// and then skips the main window.
     private func runAutostartIfRequested() {
         let environment = ProcessInfo.processInfo.environment
         guard let seconds = environment["ET_AUTOSTART_SECONDS"].flatMap(Double.init),
               let folder = environment["ET_AUTOSTART_FOLDER"] else { return }
-        settings.saveFolder = URL(fileURLWithPath: folder, isDirectory: true)
+        session.folderOverride = URL(fileURLWithPath: folder, isDirectory: true)
+        // ET_AUTOSTART_CYCLES > 1 stops, waits ET_AUTOSTART_GAP seconds and starts
+        // again, to exercise pause/resume.
+        let cycles = environment["ET_AUTOSTART_CYCLES"].flatMap(Int.init) ?? 1
+        let gap = environment["ET_AUTOSTART_GAP"].flatMap(Double.init) ?? 5
         Task {
-            await session.start()
-            print("autostart: running=\(session.isRunning) banner=\(String(describing: session.banner))")
-            try? await Task.sleep(for: .seconds(seconds))
-            print("autostart: before stop banner=\(String(describing: session.banner)) segments=\(session.segments.count)")
-            await session.stop()
+            for cycle in 1...max(1, cycles) {
+                if cycle > 1 { try? await Task.sleep(for: .seconds(gap)) }
+                await session.start()
+                print("autostart: cycle \(cycle) running=\(session.isRunning) banner=\(String(describing: session.banner))")
+                try? await Task.sleep(for: .seconds(seconds))
+                await session.stop()
+            }
             let flagged = session.segments.filter { if case .flagged = $0.status { true } else { false } }.count
             let untranslated = session.segments.filter { $0.korean == nil }.count
-            print("autostart: segments=\(session.segments.count) flagged=\(flagged) untranslated=\(untranslated)")
+            print("autostart: segments=\(session.segments.count) pauses=\(session.pauses.count) flagged=\(flagged) untranslated=\(untranslated)")
             NSApplication.shared.terminate(nil)
         }
     }

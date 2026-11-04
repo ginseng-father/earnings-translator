@@ -1,18 +1,33 @@
 import Foundation
 
 public enum MarkdownExporter {
-    public static func render(segments: [Segment], sessionStart: Date) -> String {
+    public static func render(segments: [Segment], pauses: [PauseMarker] = [], sessionStart: Date) -> String {
         var lines = ["# 실적 발표 번역 — \(format(sessionStart, "yyyy-MM-dd HH:mm"))", ""]
-        for segment in segments {
-            lines.append("**[\(timestamp(segment.start))]** \(segment.english)")
-            lines.append("> \(translationLine(segment))")
+        for entry in TranscriptEntry.interleave(segments: segments, pauses: pauses) {
+            switch entry {
+            case .segment(let segment):
+                lines.append("**[\(timestamp(segment.start))]** \(segment.english)")
+                lines.append("> \(translationLine(segment))")
+            case .pause(let marker):
+                lines.append("---")
+                lines.append("_\(marker.label)_")
+            }
             lines.append("")
         }
         return lines.joined(separator: "\n")
     }
 
     public static func fileName(for sessionStart: Date) -> String {
-        format(sessionStart, "yyyy-MM-dd_HHmm") + ".md"
+        format(sessionStart, "yyyy-MM-dd_HHmmss-SSS") + ".md"
+    }
+
+    /// Writes the transcript atomically into `folder` and returns the file's URL.
+    @discardableResult
+    public static func write(segments: [Segment], pauses: [PauseMarker] = [], sessionStart: Date, to folder: URL) throws -> URL {
+        let url = folder.appendingPathComponent(fileName(for: sessionStart))
+        let text = render(segments: segments, pauses: pauses, sessionStart: sessionStart)
+        try Data(text.utf8).write(to: url, options: .atomic)
+        return url
     }
 
     private static func translationLine(_ segment: Segment) -> String {
