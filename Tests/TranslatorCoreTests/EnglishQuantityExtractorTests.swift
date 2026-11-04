@@ -71,4 +71,16 @@ struct EnglishQuantityExtractorTests {
         #expect(extract("our 4th quarter results") == [q("4", .quarter)])
         #expect(extract("in the 1st quarter") == [q("1", .quarter)])
     }
+
+    @Test func rangeCarriesTrailingUnitBack() {
+        #expect(extract("grow between 7 and 10% year over year") == [q("7", .percent), q("10", .percent)])
+        #expect(extract("7 to 10 percent") == [q("7", .percent), q("10", .percent)])
+        #expect(extract("between 40 and 60 basis points") == [q("40", .basisPoints), q("60", .basisPoints)])
+        #expect(extract("$1.5 to 2 billion") == [q("1500000000"), q("2000000000")])
+    }
+
+    @Test func pluralRoundNumbersAreNotQuantities() {
+        #expect(extract("across 100s of stores") == [])
+        #expect(extract("1000s of suppliers") == [])
+    }
 }

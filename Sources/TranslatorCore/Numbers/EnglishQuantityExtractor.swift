@@ -16,13 +16,22 @@ public enum EnglishQuantityExtractor {
         |\b(?<qnum>[1-4])(?:st|nd|rd|th)\s+quarter\b
         |\b(?:FY|fiscal(?:\s+year)?)\s*'?(?<fy>\d{4}|\d{2})\b
         |\bfiscal(?:\s+year)?\s+twenty(?:[-\s](?<fyword>one|two|three|four|five|six|seven|eight|nine))?\b
-        |\b(?<ordinalnum>\d+(?:st|nd|rd|th))\b
+        |\b(?<ordinalnum>\d+(?:st|nd|rd|th)|\d[\d,]*0s)\b
         |\$?(?<num>\d[\d,]*(?:\.\d+)?)(?:\s*(?<unit>%|(?:trillion|billion|million|thousand|percentage\s+points?|percent|basis\s+points?|bps?)\b))?
         """#,
         options: [.caseInsensitive, .allowCommentsAndWhitespace]
     )
 
-    public static func extract(_ text: String) -> [Quantity] {
+    // "between 7 and 10%": the unit after the second number applies to both.
+    private static let range = try! NSRegularExpression(
+        pattern: #"(\d[\d,]*(?:\.\d+)?)(\s*(?:and|to|through|-|–)\s*\$?)(\d[\d,]*(?:\.\d+)?)(\s*)(%|(?:percentage\s+points?|percent|basis\s+points?|bps?|trillion|billion|million|thousand)\b)"#,
+        options: [.caseInsensitive]
+    )
+
+    public static func extract(_ source: String) -> [Quantity] {
+        let text = range.stringByReplacingMatches(
+            in: source, range: NSRange(source.startIndex..., in: source), withTemplate: "$1 $5$2$3$4$5"
+        )
         let range = NSRange(text.startIndex..., in: text)
         return pattern.matches(in: text, range: range).compactMap { match in
             func group(_ name: String) -> String? {
@@ -31,7 +40,8 @@ public enum EnglishQuantityExtractor {
                 return String(text[swiftRange])
             }
 
-            // "1st", "21st": an ordinal, usually translated without a digit.
+            // "1st", "21st", "100s of": ordinals and round plurals, usually
+            // translated without a digit (처음, 수백).
             if group("ordinalnum") != nil {
                 return nil
             }

@@ -57,4 +57,10 @@ struct KoreanQuantityExtractorTests {
         #expect(extract("9월 30일 기준") == [q("30")])
         #expect(extract("12개월 동안") == [q("12")])
     }
+
+    @Test func rangeCarriesTrailingUnitBack() {
+        #expect(extract("7~10% 성장") == [q("7", .percent), q("10", .percent)])
+        #expect(extract("15~20억 달러") == [q("1500000000"), q("2000000000")])
+        #expect(extract("40-60bp") == [q("40", .basisPoints), q("60", .basisPoints)])
+    }
 }

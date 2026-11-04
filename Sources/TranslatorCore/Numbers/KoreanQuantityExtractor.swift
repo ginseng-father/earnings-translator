@@ -18,7 +18,16 @@ public enum KoreanQuantityExtractor {
         let range: Range<String.Index>
     }
 
-    public static func extract(_ text: String) -> [Quantity] {
+    // "7~10%", "15~20억": the unit after the second number applies to both.
+    private static let range = try! NSRegularExpression(
+        pattern: #"(\d[\d,]*(?:\.\d+)?)(\s*[~\-–]\s*)(\d[\d,]*(?:\.\d+)?)(\s*)(%\s*p|%\s*포인트|%|bps?|베이시스\s*포인트|조|억|만)"#,
+        options: [.caseInsensitive]
+    )
+
+    public static func extract(_ source: String) -> [Quantity] {
+        let text = range.stringByReplacingMatches(
+            in: source, range: NSRange(source.startIndex..., in: source), withTemplate: "$1$5$2$3$4$5"
+        )
         let chunks = chunk.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { match -> Chunk? in
             func group(_ name: String) -> String? {
                 Range(match.range(withName: name), in: text).map { String(text[$0]) }
